@@ -1,0 +1,45 @@
+{
+  "name": "token-cost",
+  "version": "0.2.0",
+  "description": "See what your Claude Code usage would cost at API prices: live in the status line, and per day, month and model with /token-cost.",
+  "author": {
+    "name": "Martijn",
+    "url": "https://martijnwip.nl"
+  },
+  "homepage": "https://github.com/martijnwip/token-cost",
+  "repository": "https://github.com/martijnwip/token-cost",
+  "license": "MIT",
+  "keywords": [
+    "cost",
+    "tokens",
+    "usage",
+    "subscription",
+    "pricing"
+  ],
+  "userConfig": {
+    "language": {
+      "type": "string",
+      "title": "Language",
+      "description": "en or nl: the language of the tables and the status line.",
+      "default": "en"
+    },
+    "currency": {
+      "type": "string",
+      "title": "Currency",
+      "description": "usd or eur: the currency costs are shown in.",
+      "default": "usd"
+    },
+    "eurPerUsd": {
+      "type": "number",
+      "title": "Exchange rate (EUR per USD)",
+      "description": "How many euros one dollar is; used when the currency is eur.",
+      "default": 0.86
+    },
+    "statusLine": {
+      "type": "boolean",
+      "title": "Status line",
+      "description": "Show the session's estimated cost in the status line.",
+      "default": true
+    }
+  }
+}

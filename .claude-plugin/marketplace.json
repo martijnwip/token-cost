@@ -1,0 +1,13 @@
+{
+  "name": "token-cost",
+  "description": "See what your Claude Code usage costs at API prices.",
+  "owner": {
+    "name": "Martijn"
+  },
+  "plugins": [
+    {
+      "name": "token-cost",
+      "source": "./"
+    }
+  ]
+}
