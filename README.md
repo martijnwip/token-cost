@@ -32,7 +32,8 @@ On a Pro or Max subscription you pay a fixed fee and never see what your usage i
 - `/token-cost`: today, the last 7 days, this month and the total, plus a breakdown per model
 - `/token-cost day`: the last 14 days with usage
 - `/token-cost month`: per month
-- `/token-cost session`: the 15 most recent sessions, with their title, project and last activity (subagents count toward their session)
+- `/token-cost session`: the 15 most recent sessions, with their id, title, project and last activity (subagents count toward their session)
+- `/token-cost session <id>`: one session in detail: when it started, and per model the input, output and cache tokens with the cost. The first few characters of the id are enough, and `/token-cost <id>` works too.
 
 ## Install
 

@@ -188,8 +188,49 @@ test('groups usage per session, with its title and subagents included', async ()
 
   const text = report(tally, 'sessions', NOW, EN)
 
-  expect(text).toContain('| Session | Project | Last active | Tokens | Responses | API value |\n| :--- | :--- | :--- | ---: | ---: | ---: |')
-  expect(text).toContain('| Fix / checkout | shop | 2026-10-14 | 6.2M | 2 | $28.40 |')
-  expect(text).toContain('| Blog redesign | blog | 2026-10-14 | 3.1M | 1 | $14.20 |')
-  expect(text).toContain('| **Total** |  |  | **9.3M** | **3** | **$42.60** |')
+  expect(text).toContain('| ID | Session | Project | Last active | Tokens | Responses | API value |\n| :--- | :--- | :--- | :--- | ---: | ---: | ---: |')
+  expect(text).toContain('| `s1` | Fix / checkout | shop | 2026-10-14 | 6.2M | 2 | $28.40 |')
+  expect(text).toContain('| `s2` | Blog redesign | blog | 2026-10-14 | 3.1M | 1 | $14.20 |')
+  expect(text).toContain('| **Total** |  |  |  | **9.3M** | **3** | **$42.60** |')
+})
+
+test('shows one session in detail by the start of its id', async () => {
+  const tally = newTally()
+  const inSession = (id: string, model: string, session: string) =>
+    JSON.stringify({ ...JSON.parse(line(id, model, OPUS)), sessionId: session, cwd: '/home/me/shop' })
+  countLines(
+    [
+      inSession('a', 'claude-opus-5-5', 'abc12345-0000'),
+      inSession('b', 'claude-sonnet-5-5', 'abc12345-0000'),
+      inSession('c', 'claude-opus-5-5', 'abd99999-0000'),
+      JSON.stringify({ type: 'ai-title', aiTitle: 'Checkout fix', sessionId: 'abc12345-0000' }),
+    ].join('\n'),
+    tally,
+  )
+
+  const detail = report(tally, 'sessions', NOW, EN, 'abc1')
+  expect(detail).toContain('**Checkout fix**')
+  expect(detail).toContain('ID: `abc12345-0000`')
+  expect(detail).toContain('| Model | Input | Output | Cache write | Cache read | Responses | API value |')
+  expect(detail).toContain('| claude-opus-5-5 | 1.0M | 100k | 1.0M | 1.0M | 1 | $14.20 |')
+  expect(detail).toContain('| **Total** |')
+
+  expect(report(tally, 'sessions', NOW, EN, 'ab')).toContain('2 sessions match')
+  expect(report(tally, 'sessions', NOW, EN, 'zzz')).toContain('No session found')
+})
+
+test('/token-cost session <id> passes the id through, other views refuse one', async ($, on) => {
+  mock.env(on, { HOME: '/home' })
+  mock.clock(on, { now: NOW.getTime() })
+  on('fs.list', ($, e) => ({
+    value:
+      e.path === '/home/.claude/projects'
+        ? [{ name: 's.jsonl', kind: 'file' as const, size: 100, mtimeMs: 0, isLink: false }]
+        : [],
+  }))
+  on('fs.read', () => ({ value: JSON.stringify({ ...JSON.parse(line('a', 'claude-opus-5-5', OPUS)), sessionId: 'abc12345' }) }))
+
+  expect((await $.command.run({ ...COMMAND, args: 'session abc' })).text).toContain('ID: `abc12345`')
+  expect((await $.command.run({ ...COMMAND, args: 'abc12345' })).text).toContain('ID: `abc12345`')
+  expect((await $.command.run({ ...COMMAND, args: 'day abc' })).text).toContain('Usage: /token-cost')
 })

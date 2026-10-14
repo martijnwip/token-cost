@@ -9,8 +9,10 @@ export type Session = {
   aiTitle?: string
   customTitle?: string
   cwd?: string
+  firstActive: string
   lastActive: string
   entry: Entry
+  models: Map<string, Entry>
 }
 
 // Per day (YYYY-MM-DD, local time) and per model, the summed tokens and cost;
@@ -115,8 +117,17 @@ export function countLines(text: string, tally: Tally): void {
     tally.days.set(day, perModel)
 
     if (line.sessionId) {
-      const session = tally.sessions.get(line.sessionId) ?? { lastActive: line.timestamp, entry: empty() }
+      const session = tally.sessions.get(line.sessionId) ?? {
+        firstActive: line.timestamp,
+        lastActive: line.timestamp,
+        entry: empty(),
+        models: new Map<string, Entry>(),
+      }
       addTo(session.entry, t, dollars)
+      const perSessionModel = session.models.get(model) ?? empty()
+      addTo(perSessionModel, t, dollars)
+      session.models.set(model, perSessionModel)
+      if (line.timestamp < session.firstActive) session.firstActive = line.timestamp
       if (line.timestamp > session.lastActive) session.lastActive = line.timestamp
       session.cwd ??= line.cwd
       tally.sessions.set(line.sessionId, session)
@@ -191,7 +202,58 @@ const table = (header: string[], rows: string[][], footer?: string[], textColumn
 
 export type View = 'overview' | 'days' | 'months' | 'sessions'
 
-export function report(tally: Tally, view: View, now: Date, s: Settings): string {
+const projectOf = (session: Session) => session.cwd?.split(/[\\/]/).filter(Boolean).pop() ?? '-'
+
+const titleOf = (tally: Tally, id: string) => {
+  const titles = tally.titles.get(id)
+  return titles?.customTitle ?? titles?.aiTitle ?? id.slice(0, 8)
+}
+
+const localTime = (iso: string) => {
+  const d = new Date(iso)
+  return `${dayOf(d)} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+// One session in detail, found by (the start of) its id.
+function sessionReport(tally: Tally, idPrefix: string, s: Settings): string {
+  const t = STRINGS[s.lang]
+  const prefix = idPrefix.toLowerCase()
+  const matches = [...tally.sessions].filter(([id]) => id.toLowerCase().startsWith(prefix))
+  if (matches.length === 0) return t.sessionNotFound(idPrefix)
+  if (matches.length > 1) {
+    const list = matches.slice(0, 10).map(([id]) => `- \`${id}\` ${cell(titleOf(tally, id), 60)}`)
+    return `${t.sessionAmbiguous(matches.length)}\n\n${list.join('\n')}`
+  }
+
+  const [id, session] = matches[0] as [string, Session]
+  const tokens = (n: number) => shortTokens(n, s.lang)
+  const modelRow = (label: string, e: Entry) => [
+    label,
+    tokens(e.input),
+    tokens(e.output),
+    tokens(e.cacheWrite),
+    tokens(e.cacheRead),
+    formatNumber(e.responses, 0, s.lang),
+    amount(e.dollars, s),
+  ]
+  const models = [...session.models].sort((a, b) => b[1].dollars - a[1].dollars)
+
+  return [
+    `**${cell(titleOf(tally, id), 80)}**`,
+    '',
+    `${t.project}: ${projectOf(session)}  `,
+    `ID: \`${id}\`  `,
+    `${t.started}: ${localTime(session.firstActive)} · ${t.lastActive}: ${localTime(session.lastActive)}`,
+    '',
+    table(
+      [t.model, t.input, t.output, t.cacheWrite, t.cacheRead, t.responses, t.apiValue],
+      models.map(([m, e]) => modelRow(m, e)),
+      models.length > 1 ? modelRow(t.total, session.entry) : undefined,
+    ),
+  ].join('\n')
+}
+
+export function report(tally: Tally, view: View, now: Date, s: Settings, sessionId?: string): string {
   const t = STRINGS[s.lang]
   if (tally.days.size === 0) return t.noUsage
 
@@ -208,28 +270,26 @@ export function report(tally: Tally, view: View, now: Date, s: Settings): string
   const total = (matches: (day: string) => boolean) => row(t.total, sumOf(tally, matches))
 
   let body: string
-  if (view === 'sessions') {
+  if (view === 'sessions' && sessionId) {
+    body = sessionReport(tally, sessionId, s)
+  } else if (view === 'sessions') {
     const sessions = [...tally.sessions]
       .sort((a, b) => b[1].lastActive.localeCompare(a[1].lastActive))
       .slice(0, 15)
-    const sessionRow = ([id, session]: [string, Session]) => {
-      const titles = tally.titles.get(id)
-      const title = titles?.customTitle ?? titles?.aiTitle ?? id.slice(0, 8)
-      const project = session.cwd?.split(/[\\/]/).filter(Boolean).pop() ?? '-'
-      return [
-        cell(title, 48),
-        cell(project, 24),
+    const sessionRow = ([id, session]: [string, Session]) => [
+        `\`${id.slice(0, 8)}\``,
+        cell(titleOf(tally, id), 48),
+        cell(projectOf(session), 24),
         dayOf(new Date(session.lastActive)),
         ...row('', session.entry).slice(1),
       ]
-    }
     const shown = sessions.reduce((sum, [, session]) => add(sum, session.entry), empty())
     body = `**${t.perSession}**\n\n${table(
-      [t.session, t.project, t.lastActive, t.tokens, t.responses, t.apiValue],
+      ['ID', t.session, t.project, t.lastActive, t.tokens, t.responses, t.apiValue],
       sessions.map(sessionRow),
-      [t.total, '', '', ...row('', shown).slice(1)],
-      3,
-    )}`
+      [t.total, '', '', '', ...row('', shown).slice(1)],
+      4,
+    )}\n\n${t.sessionHint}`
   } else if (view === 'days') {
     const days = [...tally.days.keys()].sort().slice(-14)
     body = `**${t.perDay}**\n\n${table(

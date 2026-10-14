@@ -120,13 +120,19 @@ export const register: Register = (on, options) => {
   on('command.run', { command: 'token-cost' }, async ($, e) => {
     const settings = await resolveSettings($, options)
     const t = STRINGS[settings.lang]
-    const view = VIEWS[(e.args ?? '').trim().toLowerCase()]
-    if (view === undefined) return { text: t.usage }
+    const words = (e.args ?? '').trim().split(/\s+/)
+    // A bare session id (`/token-cost d5b831f4`) means `/token-cost session d5b831f4`.
+    if (words.length === 1 && VIEWS[words[0]?.toLowerCase() ?? ''] === undefined && /^[0-9a-f-]{4,}$/i.test(words[0] ?? '')) {
+      words.unshift('session')
+    }
+    const [first = '', id, ...rest] = words
+    const view = VIEWS[first.toLowerCase()]
+    if (view === undefined || (id !== undefined && view !== 'sessions') || rest.length > 0) return { text: t.usage }
 
     const { tally, skipped } = await countAll($)
     const now = new Date(await $.clock.now())
     const warning = skipped === 0 ? '' : `\n${t.unreadable(skipped)}`
 
-    return { text: `\n${report(tally, view, now, settings)}${warning}` }
+    return { text: `\n${report(tally, view, now, settings, id)}${warning}` }
   })
 }

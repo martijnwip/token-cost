@@ -9,6 +9,14 @@ export type Strings = {
   session: string
   project: string
   lastActive: string
+  started: string
+  input: string
+  output: string
+  cacheWrite: string
+  cacheRead: string
+  sessionHint: string
+  sessionNotFound: (id: string) => string
+  sessionAmbiguous: (n: number) => string
   period: string
   day: string
   month: string
@@ -40,6 +48,14 @@ export const STRINGS: Record<Lang, Strings> = {
     session: 'Session',
     project: 'Project',
     lastActive: 'Last active',
+    started: 'Started',
+    input: 'Input',
+    output: 'Output',
+    cacheWrite: 'Cache write',
+    cacheRead: 'Cache read',
+    sessionHint: 'Details of one session: `/token-cost session <id>`.',
+    sessionNotFound: id => `No session found with an id starting with \`${id}\`.`,
+    sessionAmbiguous: n => `${n} sessions match; type more characters of the id:`,
     perMonth: 'Per month',
     perModel: 'Per model, this month',
     period: 'Period',
@@ -56,11 +72,11 @@ export const STRINGS: Record<Lang, Strings> = {
     note: 'Estimate at API prices; on a subscription you pay your fixed monthly fee.',
     notCounted: 'Not counted (no known price)',
     noUsage: 'No usage found in ~/.claude/projects yet.',
-    usage: 'Usage: /token-cost, /token-cost day, /token-cost month or /token-cost session',
+    usage: 'Usage: /token-cost, /token-cost day, /token-cost month, /token-cost session or /token-cost session <id>',
     unreadable: n => `${n} transcript(s) could not be read and are not counted.`,
     status: (amount, limit) => `≈ ${amount} API value${limit}`,
     fiveHourLimit: percent => ` · 5h limit ${percent}%`,
-    commandDescription: 'What your Claude Code usage costs at API prices (token-cost [day|month|session])',
+    commandDescription: 'What your Claude Code usage costs at API prices (token-cost [day|month|session [id]])',
     million: 'M',
     billion: 'B',
   },
@@ -71,6 +87,14 @@ export const STRINGS: Record<Lang, Strings> = {
     session: 'Sessie',
     project: 'Project',
     lastActive: 'Laatst actief',
+    started: 'Gestart',
+    input: 'Invoer',
+    output: 'Uitvoer',
+    cacheWrite: 'Cache schrijven',
+    cacheRead: 'Cache lezen',
+    sessionHint: 'Details van één sessie: `/token-cost sessie <id>`.',
+    sessionNotFound: id => `Geen sessie gevonden waarvan het id begint met \`${id}\`.`,
+    sessionAmbiguous: n => `${n} sessies komen overeen; typ meer tekens van het id:`,
     perMonth: 'Per maand',
     perModel: 'Per model, deze maand',
     period: 'Periode',
@@ -87,11 +111,11 @@ export const STRINGS: Record<Lang, Strings> = {
     note: 'Schatting tegen API-prijzen; met een abonnement betaal je je vaste maandbedrag.',
     notCounted: 'Niet meegeteld (geen prijs bekend)',
     noUsage: 'Nog geen gebruik gevonden in ~/.claude/projects.',
-    usage: 'Gebruik: /token-cost, /token-cost dag, /token-cost maand of /token-cost sessie',
+    usage: 'Gebruik: /token-cost, /token-cost dag, /token-cost maand, /token-cost sessie of /token-cost sessie <id>',
     unreadable: n => `${n} transcript(en) konden niet gelezen worden en tellen niet mee.`,
     status: (amount, limit) => `≈ ${amount} API-waarde${limit}`,
     fiveHourLimit: percent => ` · 5u-limiet ${percent}%`,
-    commandDescription: 'Wat je Claude Code-gebruik tegen API-prijzen kost (token-cost [dag|maand|sessie])',
+    commandDescription: 'Wat je Claude Code-gebruik tegen API-prijzen kost (token-cost [dag|maand|sessie [id]])',
     million: ' mln',
     billion: ' mld',
   },
