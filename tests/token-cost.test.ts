@@ -170,3 +170,26 @@ test('/token-cost follows a Dutch system locale on auto', async ($, on) => {
   expect(text).toContain('**Overzicht**')
   expect(text).toContain('€ 12,21')
 })
+
+test('groups usage per session, with its title and subagents included', async () => {
+  const tally = newTally()
+  const withSession = (id: string, session: string, cwd: string) =>
+    JSON.stringify({ ...JSON.parse(line(id, 'claude-opus-5-5', OPUS)), sessionId: session, cwd })
+  countLines(
+    [
+      withSession('a', 's1', '/home/me/shop'),
+      withSession('b', 's1', '/home/me/shop'),
+      withSession('c', 's2', '/home/me/blog'),
+      JSON.stringify({ type: 'ai-title', aiTitle: 'Fix | checkout', sessionId: 's1' }),
+      JSON.stringify({ type: 'custom-title', customTitle: 'Blog redesign', sessionId: 's2' }),
+    ].join('\n'),
+    tally,
+  )
+
+  const text = report(tally, 'sessions', NOW, EN)
+
+  expect(text).toContain('| Session | Project | Last active | Tokens | Responses | API value |\n| :--- | :--- | :--- | ---: | ---: | ---: |')
+  expect(text).toContain('| Fix / checkout | shop | 2026-10-14 | 6.2M | 2 | $28.40 |')
+  expect(text).toContain('| Blog redesign | blog | 2026-10-14 | 3.1M | 1 | $14.20 |')
+  expect(text).toContain('| **Total** |  |  | **9.3M** | **3** | **$42.60** |')
+})

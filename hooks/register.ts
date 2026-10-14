@@ -17,6 +17,10 @@ const VIEWS: Record<string, View> = {
   months: 'months',
   maand: 'months',
   maanden: 'months',
+  session: 'sessions',
+  sessions: 'sessions',
+  sessie: 'sessions',
+  sessies: 'sessions',
 }
 
 async function projectsDir($: EngineInterface): Promise<string | undefined> {
@@ -37,11 +41,11 @@ async function transcripts($: EngineInterface, dir: string): Promise<{ path: str
   return found
 }
 
-// Reads a large file in pieces and counts only the lines that carry usage.
+// Reads a large file in pieces, filtered to the lines with usage or a title.
 async function countLarge($: EngineInterface, path: string, tally: Tally): Promise<boolean> {
   try {
     let rest = ''
-    for await (const { stream, text } of $.process.spawn({ argv: ['grep', '-F', '"usage"', path] })) {
+    for await (const { stream, text } of $.process.spawn({ argv: ['grep', '-E', '"usage"|"ai-title"|"custom-title"', path] })) {
       if (stream !== 'stdout') continue
       const chunk = rest + text
       const cut = chunk.lastIndexOf('\n')

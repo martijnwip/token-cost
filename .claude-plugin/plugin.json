@@ -1,7 +1,7 @@
 {
   "name": "token-cost",
-  "version": "0.3.0",
-  "description": "See what your Claude Code usage would cost at API prices: live in the status line, and per day, month and model with /token-cost.",
+  "version": "0.4.0",
+  "description": "See what your Claude Code usage would cost at API prices: live in the status line, and per day, month, session and model with /token-cost.",
   "author": {
     "name": "Martijn",
     "url": "https://martijnwip.nl"

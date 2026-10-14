@@ -30,8 +30,9 @@ On a Pro or Max subscription you pay a fixed fee and never see what your usage i
 > | claude-opus-5-5 | 424.6M | 2,208 | $169.37 |
 
 - `/token-cost`: today, the last 7 days, this month and the total, plus a breakdown per model
-- `/token-cost day`: the last 14 days
+- `/token-cost day`: the last 14 days with usage
 - `/token-cost month`: per month
+- `/token-cost session`: the 15 most recent sessions, with their title, project and last activity (subagents count toward their session)
 
 ## Install
 

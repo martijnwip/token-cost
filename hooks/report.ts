@@ -3,15 +3,30 @@ import { costOf, tokensOf, type Tokens, type Usage } from './prices'
 
 export type Entry = Tokens & { dollars: number; responses: number }
 
-// Per day (YYYY-MM-DD, local time) and per model, the summed tokens and cost.
+// One Claude Code session: its titles, where it ran, when, and what it cost.
+// Subagents write their own files but carry the session's id, so they count here.
+export type Session = {
+  aiTitle?: string
+  customTitle?: string
+  cwd?: string
+  lastActive: string
+  entry: Entry
+}
+
+// Per day (YYYY-MM-DD, local time) and per model, the summed tokens and cost;
+// and per session the same, with the session's titles.
 export type Tally = {
   days: Map<string, Map<string, Entry>>
+  sessions: Map<string, Session>
+  titles: Map<string, { aiTitle?: string; customTitle?: string }>
   seen: Set<string>
   unknown: Set<string>
 }
 
 export const newTally = (): Tally => ({
   days: new Map(),
+  sessions: new Map(),
+  titles: new Map(),
   seen: new Set(),
   unknown: new Set(),
 })
@@ -32,19 +47,44 @@ type Line = {
   type?: string
   timestamp?: string
   requestId?: string
+  sessionId?: string
+  cwd?: string
+  aiTitle?: string
+  customTitle?: string
   message?: { id?: string; model?: string; usage?: Usage }
+}
+
+// What a line must hold to matter: usage, or a session title.
+export const isRelevant = (raw: string) =>
+  (raw.includes('"usage"') && raw.includes('"assistant"')) || raw.includes('"ai-title"') || raw.includes('"custom-title"')
+
+const addTo = (entry: Entry, t: Tokens, dollars: number) => {
+  entry.input += t.input
+  entry.output += t.output
+  entry.cacheWrite += t.cacheWrite
+  entry.cacheRead += t.cacheRead
+  entry.dollars += dollars
+  entry.responses += 1
 }
 
 // Counts the assistant responses in (a piece of) a JSONL transcript.
 // Claude Code sometimes writes one response on several lines; those count once.
 export function countLines(text: string, tally: Tally): void {
   for (const raw of text.split('\n')) {
-    if (!raw.includes('"usage"') || !raw.includes('"assistant"')) continue
+    if (!isRelevant(raw)) continue
 
     let line: Line
     try {
       line = JSON.parse(raw)
     } catch {
+      continue
+    }
+
+    if ((line.type === 'ai-title' || line.type === 'custom-title') && line.sessionId) {
+      const titles = tally.titles.get(line.sessionId) ?? {}
+      if (line.aiTitle) titles.aiTitle = line.aiTitle
+      if (line.customTitle) titles.customTitle = line.customTitle
+      tally.titles.set(line.sessionId, titles)
       continue
     }
 
@@ -70,15 +110,17 @@ export function countLines(text: string, tally: Tally): void {
     const entry = perModel.get(model) ?? empty()
     const t = tokensOf(m.usage)
 
-    entry.input += t.input
-    entry.output += t.output
-    entry.cacheWrite += t.cacheWrite
-    entry.cacheRead += t.cacheRead
-    entry.dollars += dollars
-    entry.responses += 1
-
+    addTo(entry, t, dollars)
     perModel.set(model, entry)
     tally.days.set(day, perModel)
+
+    if (line.sessionId) {
+      const session = tally.sessions.get(line.sessionId) ?? { lastActive: line.timestamp, entry: empty() }
+      addTo(session.entry, t, dollars)
+      if (line.timestamp > session.lastActive) session.lastActive = line.timestamp
+      session.cwd ??= line.cwd
+      tally.sessions.set(line.sessionId, session)
+    }
   }
 }
 
@@ -131,17 +173,23 @@ export function shortTokens(n: number, lang: Lang): string {
 
 const totalTokens = (e: Entry) => e.input + e.output + e.cacheWrite + e.cacheRead
 
+// A table cell from free text: one line, no pipes, at most `max` characters.
+const cell = (text: string, max: number) => {
+  const flat = text.replace(/\s+/g, ' ').replace(/\|/g, '/').trim()
+  return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat
+}
+
 // A markdown table; the CommandOutput row draws its text as markdown on every
 // surface, so the terminal and the desktop app both show a real table.
-// Number columns align right, and `footer` is a bold total row.
-const table = (header: string[], rows: string[][], footer?: string[]): string => {
+// The first `textColumns` align left and the numbers right; `footer` is a bold total row.
+const table = (header: string[], rows: string[][], footer?: string[], textColumns = 1): string => {
   const cells = (r: string[]) => `| ${r.join(' | ')} |`
-  const align = `|${header.map((_, i) => (i === 0 ? ' :--- ' : ' ---: ')).join('|')}|`
-  const total = footer ? [cells(footer.map(cell => `**${cell}**`))] : []
+  const align = `|${header.map((_, i) => (i < textColumns ? ' :--- ' : ' ---: ')).join('|')}|`
+  const total = footer ? [cells(footer.map(c => (c === '' ? '' : `**${c}**`)))] : []
   return [cells(header), align, ...rows.map(cells), ...total].join('\n')
 }
 
-export type View = 'overview' | 'days' | 'months'
+export type View = 'overview' | 'days' | 'months' | 'sessions'
 
 export function report(tally: Tally, view: View, now: Date, s: Settings): string {
   const t = STRINGS[s.lang]
@@ -160,7 +208,29 @@ export function report(tally: Tally, view: View, now: Date, s: Settings): string
   const total = (matches: (day: string) => boolean) => row(t.total, sumOf(tally, matches))
 
   let body: string
-  if (view === 'days') {
+  if (view === 'sessions') {
+    const sessions = [...tally.sessions]
+      .sort((a, b) => b[1].lastActive.localeCompare(a[1].lastActive))
+      .slice(0, 15)
+    const sessionRow = ([id, session]: [string, Session]) => {
+      const titles = tally.titles.get(id)
+      const title = titles?.customTitle ?? titles?.aiTitle ?? id.slice(0, 8)
+      const project = session.cwd?.split(/[\\/]/).filter(Boolean).pop() ?? '-'
+      return [
+        cell(title, 48),
+        cell(project, 24),
+        dayOf(new Date(session.lastActive)),
+        ...row('', session.entry).slice(1),
+      ]
+    }
+    const shown = sessions.reduce((sum, [, session]) => add(sum, session.entry), empty())
+    body = `**${t.perSession}**\n\n${table(
+      [t.session, t.project, t.lastActive, t.tokens, t.responses, t.apiValue],
+      sessions.map(sessionRow),
+      [t.total, '', '', ...row('', shown).slice(1)],
+      3,
+    )}`
+  } else if (view === 'days') {
     const days = [...tally.days.keys()].sort().slice(-14)
     body = `**${t.perDay}**\n\n${table(
       header(t.day),

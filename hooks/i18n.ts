@@ -5,6 +5,10 @@ export type Strings = {
   perDay: string
   perMonth: string
   perModel: string
+  perSession: string
+  session: string
+  project: string
+  lastActive: string
   period: string
   day: string
   month: string
@@ -31,7 +35,11 @@ export type Strings = {
 export const STRINGS: Record<Lang, Strings> = {
   en: {
     overview: 'Overview',
-    perDay: 'Per day, last 14 days',
+    perDay: 'Per day, last 14 active days',
+    perSession: 'Per session, 15 most recent',
+    session: 'Session',
+    project: 'Project',
+    lastActive: 'Last active',
     perMonth: 'Per month',
     perModel: 'Per model, this month',
     period: 'Period',
@@ -48,17 +56,21 @@ export const STRINGS: Record<Lang, Strings> = {
     note: 'Estimate at API prices; on a subscription you pay your fixed monthly fee.',
     notCounted: 'Not counted (no known price)',
     noUsage: 'No usage found in ~/.claude/projects yet.',
-    usage: 'Usage: /token-cost, /token-cost day or /token-cost month',
+    usage: 'Usage: /token-cost, /token-cost day, /token-cost month or /token-cost session',
     unreadable: n => `${n} transcript(s) could not be read and are not counted.`,
     status: (amount, limit) => `≈ ${amount} API value${limit}`,
     fiveHourLimit: percent => ` · 5h limit ${percent}%`,
-    commandDescription: 'What your Claude Code usage costs at API prices (token-cost [day|month])',
+    commandDescription: 'What your Claude Code usage costs at API prices (token-cost [day|month|session])',
     million: 'M',
     billion: 'B',
   },
   nl: {
     overview: 'Overzicht',
-    perDay: 'Per dag, laatste 14 dagen',
+    perDay: 'Per dag, laatste 14 dagen met gebruik',
+    perSession: 'Per sessie, 15 meest recente',
+    session: 'Sessie',
+    project: 'Project',
+    lastActive: 'Laatst actief',
     perMonth: 'Per maand',
     perModel: 'Per model, deze maand',
     period: 'Periode',
@@ -75,11 +87,11 @@ export const STRINGS: Record<Lang, Strings> = {
     note: 'Schatting tegen API-prijzen; met een abonnement betaal je je vaste maandbedrag.',
     notCounted: 'Niet meegeteld (geen prijs bekend)',
     noUsage: 'Nog geen gebruik gevonden in ~/.claude/projects.',
-    usage: 'Gebruik: /token-cost, /token-cost dag of /token-cost maand',
+    usage: 'Gebruik: /token-cost, /token-cost dag, /token-cost maand of /token-cost sessie',
     unreadable: n => `${n} transcript(en) konden niet gelezen worden en tellen niet mee.`,
     status: (amount, limit) => `≈ ${amount} API-waarde${limit}`,
     fiveHourLimit: percent => ` · 5u-limiet ${percent}%`,
-    commandDescription: 'Wat je Claude Code-gebruik tegen API-prijzen kost (token-cost [dag|maand])',
+    commandDescription: 'Wat je Claude Code-gebruik tegen API-prijzen kost (token-cost [dag|maand|sessie])',
     million: ' mln',
     billion: ' mld',
   },
