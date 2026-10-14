@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 
 import { formatNumber } from '../hooks/i18n'
+import { pickCurrency, pickLang } from '../hooks/locale'
 import { costOf } from '../hooks/prices'
 import { amount, countLines, newTally, report } from '../hooks/report'
 
@@ -106,7 +107,8 @@ test('/token-cost in Dutch with euros', { options: { language: 'nl', currency: '
   expect(text).toContain('€ 12,21')
 })
 
-test('/token-cost with an unknown argument explains the usage', async $ => {
+test('/token-cost with an unknown argument explains the usage', async ($, on) => {
+  mock.env(on, { HOME: '/home' })
   const { text } = await $.command.run({ ...COMMAND, args: 'year' })
   expect(text).toContain('Usage: /token-cost')
 })
@@ -125,10 +127,46 @@ test('the status line shows the session cost and the 5-hour limit', async ($, on
     status.push(e.text)
     return { value: undefined }
   })
+  mock.env(on, { HOME: '/home', LANG: 'en_US.UTF-8' })
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('command.register', ($, e) => ({ value: { command: e.name } }))
 
   await $.session.start({ cwd: '/home', surface: 'terminal', isInteractive: true })
 
   expect(status.at(-1)).toBe('≈ $1.50 API value · 5h limit 23.5%')
+})
+
+test('detects language and currency, an explicit setting wins', async () => {
+  const nl = { systemLocales: [undefined, undefined, 'nl_NL.UTF-8'] }
+  const us = { systemLocales: [undefined, undefined, 'en_US.UTF-8'] }
+  const be = { systemLocales: ['fr_BE.UTF-8', undefined, 'en_US.UTF-8'] }
+
+  expect(pickLang('auto', nl)).toBe('nl')
+  expect(pickCurrency('auto', nl)).toBe('eur')
+  expect(pickLang('auto', us)).toBe('en')
+  expect(pickCurrency('auto', us)).toBe('usd')
+  expect(pickLang('auto', be)).toBe('en')
+  expect(pickCurrency('auto', be)).toBe('eur')
+  expect(pickLang('auto', { claudeLanguage: 'Dutch', systemLocales: ['en_US.UTF-8'] })).toBe('nl')
+  expect(pickLang('auto', { claudeLanguage: 'japanese', systemLocales: ['nl_NL.UTF-8'] })).toBe('en')
+  expect(pickLang('auto', { systemLocales: ['C'] })).toBe('en')
+  expect(pickLang('en', nl)).toBe('en')
+  expect(pickCurrency('usd', nl)).toBe('usd')
+})
+
+test('/token-cost follows a Dutch system locale on auto', async ($, on) => {
+  mock.env(on, { HOME: '/home', LANG: 'nl_NL.UTF-8' })
+  mock.clock(on, { now: NOW.getTime() })
+  on('fs.list', ($, e) => ({
+    value:
+      e.path === '/home/.claude/projects'
+        ? [{ name: 's.jsonl', kind: 'file' as const, size: 100, mtimeMs: 0, isLink: false }]
+        : [],
+  }))
+  on('fs.read', () => ({ value: line('a', 'claude-opus-5-5', OPUS) }))
+
+  const { text } = await $.command.run({ ...COMMAND, args: '' })
+
+  expect(text).toContain('**Overzicht**')
+  expect(text).toContain('€ 12,21')
 })

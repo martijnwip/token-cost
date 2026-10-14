@@ -1,6 +1,7 @@
-import type { EngineInterface, Register } from 'claude-code'
+import type { EngineInterface, PluginOptions, Register } from 'claude-code'
 
 import { formatNumber, STRINGS } from './i18n'
+import { pickCurrency, pickLang, type LocaleHints } from './locale'
 import { amount, countLines, newTally, report, type Settings, type Tally, type View } from './report'
 
 // $.fs.read reads up to 4 MiB; larger transcripts are read filtered through grep.
@@ -81,29 +82,40 @@ async function showStatus($: EngineInterface, s: Settings): Promise<void> {
   $.ui.status(t.status(amount(cost.usd, s), limit))
 }
 
-export const register: Register = (on, options) => {
-  const settings: Settings = {
-    lang: options.language === 'nl' ? 'nl' : 'en',
-    currency: options.currency === 'eur' ? 'eur' : 'usd',
+// Language and currency: an explicit option wins, `auto` detects them from
+// Claude Code's own `language` setting and the system locale.
+async function resolveSettings($: EngineInterface, options: PluginOptions): Promise<Settings> {
+  const hints: LocaleHints = {
+    claudeLanguage: (await $.settings.read().catch(() => ({}) as Record<string, unknown>)).language,
+    systemLocales: [await $.env.get('LC_ALL'), await $.env.get('LC_MESSAGES'), await $.env.get('LANG')],
+  }
+  return {
+    lang: pickLang(options.language, hints),
+    currency: pickCurrency(options.currency, hints),
     eurPerUsd: typeof options.eurPerUsd === 'number' && options.eurPerUsd > 0 ? options.eurPerUsd : 0.86,
   }
+}
+
+export const register: Register = (on, options) => {
   const withStatus = options.statusLine !== false
-  const t = STRINGS[settings.lang]
 
   on('session.start', async ($, e, next) => {
     const result = await next(e)
-    await $.command.register({ name: 'token-cost', description: t.commandDescription })
+    const settings = await resolveSettings($, options)
+    await $.command.register({ name: 'token-cost', description: STRINGS[settings.lang].commandDescription })
     if (withStatus) await showStatus($, settings)
     return result
   })
 
   on('turn.complete', async ($, e, next) => {
     const result = await next(e)
-    if (withStatus) await showStatus($, settings)
+    if (withStatus) await showStatus($, await resolveSettings($, options))
     return result
   })
 
   on('command.run', { command: 'token-cost' }, async ($, e) => {
+    const settings = await resolveSettings($, options)
+    const t = STRINGS[settings.lang]
     const view = VIEWS[(e.args ?? '').trim().toLowerCase()]
     if (view === undefined) return { text: t.usage }
 

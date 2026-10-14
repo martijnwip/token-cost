@@ -51,10 +51,12 @@ Set them during install or with `/plugin configure token-cost@token-cost`:
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| `language` | `en` | `en` or `nl` (Dutch): the language of the tables and the status line |
-| `currency` | `usd` | `usd` or `eur` |
+| `language` | `auto` | `auto`, `en` or `nl` (Dutch): the language of the tables and the status line |
+| `currency` | `auto` | `auto`, `usd` or `eur` |
 | `eurPerUsd` | `0.86` | The exchange rate used for `eur` |
 | `statusLine` | on | Show the session's cost in the status line |
+
+With `auto`, the language follows Claude Code's own `language` setting, and otherwise the system locale (`LC_ALL`, `LC_MESSAGES`, `LANG`): Dutch for an `nl` locale, English for everything else. The currency is euros for a eurozone locale such as `nl_NL` or `de_DE`, and dollars otherwise. An explicit value always wins.
 
 ## How it calculates
 

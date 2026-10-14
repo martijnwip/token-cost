@@ -1,6 +1,6 @@
 {
   "name": "token-cost",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "See what your Claude Code usage would cost at API prices: live in the status line, and per day, month and model with /token-cost.",
   "author": {
     "name": "Martijn",
@@ -20,14 +20,14 @@
     "language": {
       "type": "string",
       "title": "Language",
-      "description": "en or nl: the language of the tables and the status line.",
-      "default": "en"
+      "description": "auto, en or nl. auto follows Claude Code's language setting, then the system locale.",
+      "default": "auto"
     },
     "currency": {
       "type": "string",
       "title": "Currency",
-      "description": "usd or eur: the currency costs are shown in.",
-      "default": "usd"
+      "description": "auto, usd or eur. auto picks eur for a eurozone system locale, else usd.",
+      "default": "auto"
     },
     "eurPerUsd": {
       "type": "number",
