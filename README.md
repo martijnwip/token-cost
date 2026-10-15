@@ -83,6 +83,22 @@ Everything runs locally. The plugin makes no network connections and stores noth
 - It reads `HOME`/`USERPROFILE`, `CLAUDE_CONFIG_DIR`, `LC_ALL`, `LC_MESSAGES`, `LANG` and Claude Code's `language` setting, to find the transcripts and to pick a language and currency on `auto`.
 - It runs `grep` on transcripts larger than 4 MB, only to filter them to the lines with usage or a session title.
 
+### What it sends
+
+Nothing. The plugin has no network access in its code and makes no network calls. Its only output is text in your own Claude Code session: the status line and the `/token-cost` tables. It does not change your settings, permissions or files.
+
+### Which program it runs, and why
+
+`grep`, and nothing else. Claude Code's plugin API reads at most 4 MB per file, so for a transcript larger than that the plugin runs `grep -E '"usage"|"ai-title"|"custom-title"' <transcript>` (`hooks/register.ts`, `countLarge`). The command is fixed apart from the transcript's path, which comes from listing `~/.claude/projects`. It only filters the file to the lines with token usage or a session title; the plugin then counts those lines itself. If `grep` is not available (for example on Windows), those files are skipped and the output says how many.
+
+### What it hooks
+
+- `session.start`: registers the `/token-cost` command and shows the session's cost in the status line.
+- `turn.complete`: after each turn, updates the status line. It passes the turn on unchanged.
+- `command.run` for `/token-cost` only: builds the tables.
+
+The plugin reads conversation transcripts only for the metadata listed above, and does not read, show or keep message content.
+
 See [PRIVACY.md](PRIVACY.md) for the full privacy policy.
 
 ## About
