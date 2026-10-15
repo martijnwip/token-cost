@@ -1,6 +1,6 @@
 {
   "name": "token-cost",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "See what your Claude Code usage would cost at API prices: live in the status line, and per day, month, session and model with /token-cost.",
   "author": {
     "name": "Martijn",
@@ -41,5 +41,7 @@
       "description": "Show the session's estimated cost in the status line.",
       "default": true
     }
-  }
+  },
+  "privacyPolicyUrl": "https://github.com/martijnwip/token-cost/blob/main/PRIVACY.md",
+  "documentationUrl": "https://github.com/martijnwip/token-cost#readme"
 }
