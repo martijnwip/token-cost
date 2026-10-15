@@ -73,7 +73,17 @@ With `auto`, the language follows Claude Code's own `language` setting, and othe
 - Haiku 5.5's long-context rate (above 100K tokens) is not taken into account.
 - Models without a known price are listed separately and not counted.
 - On Windows, transcripts larger than 4 MB are skipped (they are read with `grep`), and the output says how many.
-- The plugin sends nothing anywhere: everything is calculated locally.
+
+## Privacy and what the plugin reads
+
+Everything runs locally. The plugin makes no network connections and stores nothing.
+
+- It reads Claude Code's local transcripts (`~/.claude/projects/**/*.jsonl`, or `$CLAUDE_CONFIG_DIR/projects`) and uses only the model, token counts, timestamp and session id of each API response, plus each session's title and folder name. It does not read or keep the content of your conversations.
+- It reads the current session's cost and rate-limit windows through Claude Code's plugin API, for the status line.
+- It reads `HOME`/`USERPROFILE`, `CLAUDE_CONFIG_DIR`, `LC_ALL`, `LC_MESSAGES`, `LANG` and Claude Code's `language` setting, to find the transcripts and to pick a language and currency on `auto`.
+- It runs `grep` on transcripts larger than 4 MB, only to filter them to the lines with usage or a session title.
+
+See [PRIVACY.md](PRIVACY.md) for the full privacy policy.
 
 ## About
 
