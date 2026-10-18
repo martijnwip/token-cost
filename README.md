@@ -45,7 +45,14 @@ In Claude Code, type:
 
 Answer `y` to add the marketplace and pick a scope (user is the default). The plugin works right away, no restart needed.
 
-Requires a recent Claude Code: the one-step install line needs 2.1.275 or later. The plugin runs in the terminal and in the desktop app's Code tab; the `/plugin install` command itself is terminal-only.
+Requires a recent Claude Code: the one-step install line needs 2.1.275 or later. On an older version, add the marketplace first and then install the plugin:
+
+```
+/plugin marketplace add martijnwip/token-cost
+/plugin install token-cost@token-cost
+```
+
+The plugin runs in the terminal and in the desktop app's Code tab; the `/plugin install` command itself is terminal-only.
 
 ## Settings
 
